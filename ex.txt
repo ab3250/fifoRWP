@@ -1,0 +1,143 @@
+With cleanly compiling code under stringent compilation options:
+
+$ gcc -O3 -g -std=c11 -Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes \
+>     -Wold-style-definition -Werror write.c -o write
+$ gcc -O3 -g -std=c11 -Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes \
+>     -Wold-style-definition -Werror read.c -o read
+$
+the code basically works for me. I've added error checking. The slightly odd argv[argc-argc] prints argv[0] but avoids a warning (error because of -Werror) about argc being unused.
+
+read.c
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+int main(int argc, char **argv)
+{
+    int fd, nread;
+    const char *pipe_file = "/tmp/test_fifo";
+
+    char buf[0x100];
+
+    if ((fd = open(pipe_file, O_RDONLY)) < 0)
+    {
+        fprintf(stderr, "%s: Failed to open FIFO %s\n", argv[argc-argc], pipe_file);
+        return 1;
+    }
+    printf("%s: open successful\n", argv[0]);
+
+    while(1) {
+        printf("\n"); /*  */
+        memset(buf, 0, 100);
+        nread = read(fd, buf, 0x100-1);
+        if (nread <= 0)
+            break;
+        printf("data is %s\n", buf);
+        sleep(1);
+    }
+
+    return 0;
+}
+write.c
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+    char *s = "changzhi";
+    const char *pipe_file = "/tmp/test_fifo";
+
+    if ((fd = open(pipe_file, O_WRONLY)) < 0)
+    {
+        fprintf(stderr, "%s: failed to open FIFO %s\n", argv[argc-argc], pipe_file);
+        return 1;
+    }
+    printf("%s: open successful\n", argv[0]);
+    if (write(fd, s, strlen(s)) <= 0)
+    {
+        fprintf(stderr, "%s: failed to open FIFO %s\n", argv[argc-argc], pipe_file);
+        return 1;
+    }
+    printf("%s: write successful\n", argv[0]);
+
+    return 0;
+}
+Sample output
+$ ./read & ./write
+[1] 85542
+./write: open successful
+./write: write successful
+./read: open successful
+
+data is changzhi
+$ 
+
+[1]+  Done                    ./read
+$ ./write & ./read
+[1] 85544
+./write: open successful
+./read: open successful
+
+./write: write successful
+data is changzhi
+
+[1]+  Done                    ./write
+
+
+
+***** char ready
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <sys/select.h>
+
+int main()
+{
+    fd_set readCheck;
+    fd_set errCheck;
+    char buffer[64];
+    struct timeval timeout;
+    int rv;
+
+    int fd = open("./fifo.test", O_RDONLY | O_RSYNC);
+
+    FD_ZERO(&readCheck);
+    FD_ZERO(&errCheck);
+
+    while (1) {
+        FD_SET(fd, &readCheck);
+        FD_SET(fd, &errCheck);
+
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
+
+        rv = select(fd, &readCheck, NULL, &errCheck, &timeout);
+        if (rv < 0) {
+            printf("Select failed\r\n");
+            break;
+        }
+
+        if (FD_ISSET(fd, &errCheck)) {
+            printf("FD error\r\n");
+            continue;
+        }
+
+        if (FD_ISSET(fd, &readCheck)) {
+            memset(buffer, 0, sizeof(buffer));
+            rv = read(fd, buffer, sizeof(buffer));
+            if (rv < 0) {
+                printf("Read failed\r\n");
+                break;
+            }
+            buffer[63] = '\0';
+            printf(buffer);
+        }
+    }
+    close(fd);
+
+    return 0;
+}
