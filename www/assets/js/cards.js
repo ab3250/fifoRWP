@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', loadWindow, false)
  console.log("initialized websocket")
 
  ws.onmessage = function(evt) {
-  //
   const d = JSON.parse(evt.data) 
   switch (d.type){
     case 'greeting': console.log(d.data) 
@@ -69,7 +68,7 @@ return array;
 }
 
 function mode (btnID) {
-   ws.send(btnID + "\r\n") //+ "\r\n"
+   ws.send(btnID) //+ "\r\n"
   
    //alert(btnID)
 }
@@ -97,8 +96,7 @@ function fillBox(array){
  }
 
 function loadWindow (){
-  const c = document.getElementById("myCanvas")
-  ctx = c.getContext("2d")
+ 
 
   Array.from(document.getElementsByTagName('button')).forEach(function (value, i, col) {
     col[i].onclick = function (e) { mode(e.target.id) }

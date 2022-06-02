@@ -1,0 +1,7 @@
+(c-include "chibi/eval.h")
+(define-c void gwinit())
+(define-c string scheme_read_ws())
+(define-c string get_buf())
+(define-c void scheme_write_ws((string)))
+(define-c void set_buf((string)))
+(define-c int fifoPoll(string))
