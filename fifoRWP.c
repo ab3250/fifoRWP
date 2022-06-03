@@ -9,14 +9,13 @@
 #include <sys/select.h>
 #include <sys/poll.h>
 
-char buf[500] = { '\0' };
+  char buf[500] = { '\0' };
 
-static char* scheme_read_ws() {
+static char* scheme_read_ws(char * fifoIn) {
   int bytes = 0;
   fd_set set;
-  char *recvfifo = "./recv";
   int fd = 0;
-  if ((fd = open (recvfifo, O_RDWR | O_NONBLOCK)) < 0)
+  if ((fd = open (fifoIn, O_RDWR | O_NONBLOCK)) < 0)
     exit (1);
   FD_ZERO (&set);
   FD_SET (fd, &set);
@@ -32,10 +31,9 @@ static void gwinit(void){
   fflush(stdout);
 }
 
-static void scheme_write_ws(char* str){
+static void scheme_write_ws(char * fifoOut,char* str){
    int sendfd;
-   char *sendfifo = "./send";
-   sendfd = open(sendfifo, O_WRONLY);
+   sendfd = open(fifoOut, O_WRONLY);
    write(sendfd, str, strlen(str));    
    close(sendfd);  
 }
@@ -68,6 +66,7 @@ int fifoPoll (char * fifo)
   }
 }
 
+
 sexp sexp_fifoPoll_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0) {
   sexp res;
   if (! sexp_stringp(arg0))
@@ -76,17 +75,21 @@ sexp sexp_fifoPoll_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0) {
   return res;
 }
 
-sexp sexp_scheme_write_ws_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0) {
+sexp sexp_scheme_write_ws_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0, sexp arg1) {
   sexp res;
   if (! sexp_stringp(arg0))
     return sexp_type_exception(ctx, self, SEXP_STRING, arg0);
-  res = ((scheme_write_ws(sexp_string_data(arg0))), SEXP_VOID);
+  if (! sexp_stringp(arg1))
+    return sexp_type_exception(ctx, self, SEXP_STRING, arg1);
+  res = ((scheme_write_ws(sexp_string_data(arg0), sexp_string_data(arg1))), SEXP_VOID);
   return res;
 }
 
-sexp sexp_scheme_read_ws_stub (sexp ctx, sexp self, sexp_sint_t n) {
+sexp sexp_scheme_read_ws_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0) {
   sexp res;
-  res = sexp_c_string(ctx, scheme_read_ws(), -1);
+  if (! sexp_stringp(arg0))
+    return sexp_type_exception(ctx, self, SEXP_STRING, arg0);
+  res = sexp_c_string(ctx, scheme_read_ws(sexp_string_data(arg0)), -1);
   return res;
 }
 
@@ -108,14 +111,16 @@ sexp sexp_init_library (sexp ctx, sexp self, sexp_sint_t n, sexp env, const char
     sexp_opcode_return_type(op) = sexp_make_fixnum(SEXP_FIXNUM);
     sexp_opcode_arg1_type(op) = sexp_make_fixnum(SEXP_STRING);
   }
-  op = sexp_define_foreign(ctx, env, "scheme_write_ws", 1, sexp_scheme_write_ws_stub);
+  op = sexp_define_foreign(ctx, env, "scheme_write_ws", 2, sexp_scheme_write_ws_stub);
   if (sexp_opcodep(op)) {
     sexp_opcode_return_type(op) = SEXP_VOID;
     sexp_opcode_arg1_type(op) = sexp_make_fixnum(SEXP_STRING);
+    sexp_opcode_arg2_type(op) = sexp_make_fixnum(SEXP_STRING);
   }
-  op = sexp_define_foreign(ctx, env, "scheme_read_ws", 0, sexp_scheme_read_ws_stub);
+  op = sexp_define_foreign(ctx, env, "scheme_read_ws", 1, sexp_scheme_read_ws_stub);
   if (sexp_opcodep(op)) {
     sexp_opcode_return_type(op) = sexp_make_fixnum(SEXP_STRING);
+    sexp_opcode_arg1_type(op) = sexp_make_fixnum(SEXP_STRING);
   }
   op = sexp_define_foreign(ctx, env, "gwinit", 0, sexp_gwinit_stub);
   if (sexp_opcodep(op)) {
@@ -124,7 +129,6 @@ sexp sexp_init_library (sexp ctx, sexp self, sexp_sint_t n, sexp env, const char
   sexp_gc_release3(ctx);
   return SEXP_VOID;
 }
-
 
 
 

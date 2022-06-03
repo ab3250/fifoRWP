@@ -16,31 +16,21 @@ sexp sexp_fifoPoll_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0) {
   return res;
 }
 
-sexp sexp_set_buf_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0) {
+sexp sexp_scheme_write_ws_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0, sexp arg1) {
   sexp res;
   if (! sexp_stringp(arg0))
     return sexp_type_exception(ctx, self, SEXP_STRING, arg0);
-  res = ((set_buf(sexp_string_data(arg0))), SEXP_VOID);
+  if (! sexp_stringp(arg1))
+    return sexp_type_exception(ctx, self, SEXP_STRING, arg1);
+  res = ((scheme_write_ws(sexp_string_data(arg0), sexp_string_data(arg1))), SEXP_VOID);
   return res;
 }
 
-sexp sexp_scheme_write_ws_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0) {
+sexp sexp_scheme_read_ws_stub (sexp ctx, sexp self, sexp_sint_t n, sexp arg0) {
   sexp res;
   if (! sexp_stringp(arg0))
     return sexp_type_exception(ctx, self, SEXP_STRING, arg0);
-  res = ((scheme_write_ws(sexp_string_data(arg0))), SEXP_VOID);
-  return res;
-}
-
-sexp sexp_get_buf_stub (sexp ctx, sexp self, sexp_sint_t n) {
-  sexp res;
-  res = sexp_c_string(ctx, get_buf(), -1);
-  return res;
-}
-
-sexp sexp_scheme_read_ws_stub (sexp ctx, sexp self, sexp_sint_t n) {
-  sexp res;
-  res = sexp_c_string(ctx, scheme_read_ws(), -1);
+  res = sexp_c_string(ctx, scheme_read_ws(sexp_string_data(arg0)), -1);
   return res;
 }
 
@@ -62,23 +52,16 @@ sexp sexp_init_library (sexp ctx, sexp self, sexp_sint_t n, sexp env, const char
     sexp_opcode_return_type(op) = sexp_make_fixnum(SEXP_FIXNUM);
     sexp_opcode_arg1_type(op) = sexp_make_fixnum(SEXP_STRING);
   }
-  op = sexp_define_foreign(ctx, env, "set_buf", 1, sexp_set_buf_stub);
+  op = sexp_define_foreign(ctx, env, "scheme_write_ws", 2, sexp_scheme_write_ws_stub);
   if (sexp_opcodep(op)) {
     sexp_opcode_return_type(op) = SEXP_VOID;
     sexp_opcode_arg1_type(op) = sexp_make_fixnum(SEXP_STRING);
+    sexp_opcode_arg2_type(op) = sexp_make_fixnum(SEXP_STRING);
   }
-  op = sexp_define_foreign(ctx, env, "scheme_write_ws", 1, sexp_scheme_write_ws_stub);
+  op = sexp_define_foreign(ctx, env, "scheme_read_ws", 1, sexp_scheme_read_ws_stub);
   if (sexp_opcodep(op)) {
-    sexp_opcode_return_type(op) = SEXP_VOID;
+    sexp_opcode_return_type(op) = sexp_make_fixnum(SEXP_STRING);
     sexp_opcode_arg1_type(op) = sexp_make_fixnum(SEXP_STRING);
-  }
-  op = sexp_define_foreign(ctx, env, "get_buf", 0, sexp_get_buf_stub);
-  if (sexp_opcodep(op)) {
-    sexp_opcode_return_type(op) = sexp_make_fixnum(SEXP_STRING);
-  }
-  op = sexp_define_foreign(ctx, env, "scheme_read_ws", 0, sexp_scheme_read_ws_stub);
-  if (sexp_opcodep(op)) {
-    sexp_opcode_return_type(op) = sexp_make_fixnum(SEXP_STRING);
   }
   op = sexp_define_foreign(ctx, env, "gwinit", 0, sexp_gwinit_stub);
   if (sexp_opcodep(op)) {
